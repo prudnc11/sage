@@ -1,397 +1,648 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
-  Zap,
-  Plus,
-  ToggleLeft,
-  ToggleRight,
-  Play,
-  ArrowRight,
-  Activity,
-  AlertTriangle,
-  X,
-  Check,
-  Search,
-  Trash2,
-  Copy,
-  MoreHorizontal,
-  ChevronDown,
-  Edit3,
-  Pause,
+  Zap, Sparkles, AlertTriangle, HelpCircle, ThumbsUp,
+  FileEdit, CheckCircle2, MoreHorizontal, X, ExternalLink,
+  Play, Rocket, Search, ChevronDown, Copy, Plus, ZoomIn,
+  Maximize2, MousePointer2, GitBranch, Smile, Filter,
+  BrainCircuit, Mail, Database, Send, Ticket, BookOpen,
 } from "lucide-react";
-import { AUTOMATION_RULES as SEED_RULES, TEAMS } from "../data/store";
+import { Avatar } from "../components/shared";
 
-function useClickOutside(ref, handler) {
-  useEffect(() => {
-    function listener(e) { if (ref.current && !ref.current.contains(e.target)) handler(); }
-    document.addEventListener("mousedown", listener);
-    return () => document.removeEventListener("mousedown", listener);
-  }, [ref, handler]);
-}
+/* ═══════════════════════════════════════════════════════════
+   SEED DATA
+   ═══════════════════════════════════════════════════════════ */
 
-const TRIGGER_OPTIONS = ["Issue created", "Issue updated", "PR merged", "PR opened", "Age > 24h", "Age > 48h", "Age > 90 days", "Comment added", "Label changed", "Status changed"];
-const ACTION_OPTIONS = ["Change status to In Review", "Change status to Done", "Change status to Cancelled", "Assign to round-robin (Engineering)", "Send Slack notification to Team Lead", "Add label 'Security'", "Post comment", "Remove from sprint"];
+const SEED_NODES = [
+  {
+    id: "n1", type: "trigger", title: "New Ticket", subtitle: "Zendesk Webhook",
+    x: 370, y: 60, iconBg: "#4caf50", iconType: "zap",
+  },
+  {
+    id: "n2", type: "ai", title: "Analyze Sentiment", subtitle: "GPT-4o \u2022 28ms",
+    x: 330, y: 210, iconBg: "#7c3aed", iconType: "sparkles",
+    config: {
+      model: "GPT-4o-mini (Fastest)",
+      cost: "$0.002 per run",
+      prompt: 'You are a customer support triage agent. Analyze the incoming message stored in variable {{trigger.message}}.\n\nOutput JSON with:\n1. "sentiment": float (-1.0 to 1.0)\n2. "urgency": "low", "medium", "high"\n3. "summary": string (max 10 words)',
+      temperature: 0.2,
+      schema: '{\n  "sentiment": 0.85,\n  "urgency": "low",\n  "summary": "User loves the new dashboard"\n}',
+    },
+  },
+  {
+    id: "n3", type: "route", title: "Route: Critical", subtitle: "If sentiment < 0.3",
+    x: 130, y: 390, iconBg: "#ef4444", iconType: "alert",
+    config: { condition: "sentiment < 0.3" },
+  },
+  {
+    id: "n4", type: "route", title: "Route: Inquiry", subtitle: 'If type = "Question"',
+    x: 370, y: 390, iconBg: "#06b6d4", iconType: "help",
+    config: { condition: 'type = "Question"' },
+  },
+  {
+    id: "n5", type: "route", title: "Route: Praise", subtitle: "If sentiment > 0.8",
+    x: 610, y: 390, iconBg: "#f59e0b", iconType: "thumbsUp",
+    config: { condition: "sentiment > 0.8" },
+  },
+  {
+    id: "n6", type: "action", title: "Escalate to Slack", subtitle: "Channel: #urgent",
+    x: 130, y: 530, iconBg: "#ef4444", iconType: "alert",
+    config: { channel: "#urgent", integration: "Slack" },
+  },
+  {
+    id: "n7", type: "action", title: "Draft Response", subtitle: "Using KB Articles",
+    x: 370, y: 530, iconBg: "#3b82f6", iconType: "fileEdit",
+    config: { source: "KB Articles", integration: "Internal" },
+  },
+  {
+    id: "n8", type: "action", title: "Log Feedback", subtitle: "Airtable: Testimonials",
+    x: 610, y: 530, iconBg: "#10b981", iconType: "database",
+    config: { table: "Testimonials", integration: "Airtable" },
+  },
+  {
+    id: "n9", type: "end", title: "Mark Ticket Resolved", subtitle: "",
+    x: 370, y: 680, iconBg: "#4caf50", iconType: "check",
+  },
+];
 
-/* ── Editable pill ── */
-function EditablePill({ value, options, onChange, color }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const ref = useRef(null);
-  useClickOutside(ref, () => setOpen(false));
-  const filtered = options.filter((o) => o.toLowerCase().includes(search.toLowerCase()));
+const SEED_EDGES = [
+  { from: "n1", to: "n2" },
+  { from: "n2", to: "n3" },
+  { from: "n2", to: "n4" },
+  { from: "n2", to: "n5" },
+  { from: "n3", to: "n6" },
+  { from: "n4", to: "n7" },
+  { from: "n5", to: "n8" },
+  { from: "n6", to: "n9" },
+  { from: "n7", to: "n9" },
+  { from: "n8", to: "n9" },
+];
+
+const LOGIC_BLOCKS = [
+  { id: "lb1", type: "ai", title: "AI Reason", iconType: "brain", iconBg: "#7c3aed" },
+  { id: "lb2", type: "route", title: "Branch", iconType: "branch", iconBg: "#06b6d4" },
+  { id: "lb3", type: "ai", title: "Sentiment", iconType: "smile", iconBg: "#f59e0b" },
+  { id: "lb4", type: "action", title: "Extract", iconType: "filter", iconBg: "#10b981" },
+];
+
+const INTEGRATIONS = [
+  { id: "int1", name: "Slack", desc: "Send message", color: "#611f69", letter: "S" },
+  { id: "int2", name: "Email", desc: "Send via SMTP", color: "#3b82f6", letter: "E" },
+  { id: "int3", name: "Notion", desc: "Update DB", color: "#191919", letter: "N" },
+  { id: "int4", name: "Zendesk", desc: "Manage Ticket", color: "#17494d", letter: "Z" },
+  { id: "int5", name: "HubSpot", desc: "Sync Customer", color: "#ff7a59", letter: "H" },
+];
+
+const NODE_W = 210;
+const NODE_H = 56;
+
+/* ═══════════════════════════════════════════════════════════
+   ICON HELPER
+   ═══════════════════════════════════════════════════════════ */
+function NodeIcon({ type, bg, size = 30 }) {
+  const iconSize = size * 0.5;
+  const Icon = {
+    zap: Zap, sparkles: Sparkles, alert: AlertTriangle, help: HelpCircle,
+    thumbsUp: ThumbsUp, fileEdit: FileEdit, database: Database, check: CheckCircle2,
+    brain: BrainCircuit, branch: GitBranch, smile: Smile, filter: Filter,
+  }[type] || Zap;
 
   return (
-    <div className="relative" ref={ref}>
-      <span onClick={(e) => { e.stopPropagation(); setOpen(!open); }} className={`inline-flex items-center gap-[4px] ${color} rounded-[4px] px-[6px] py-[3px] text-[11px] font-medium cursor-pointer hover:opacity-80 transition-opacity max-w-[200px]`}>
-        <span className="truncate">{value}</span>
-        <ChevronDown size={10} className="shrink-0" />
-      </span>
-      {open && (
-        <div className="absolute left-0 top-full mt-[2px] w-[260px] bg-surface-card rounded-lg border border-divider shadow-[0_4px_20px_rgba(0,0,0,0.18)] z-30 py-[4px]">
-          <div className="flex items-center gap-[6px] px-3 py-[6px] border-b border-divider mx-[4px] mb-[2px]">
-            <Search size={13} className="text-text-tertiary shrink-0" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." autoFocus className="bg-transparent text-[13px] text-text-primary placeholder:text-text-tertiary outline-none w-full" />
-          </div>
-          {filtered.map((opt) => (
-            <div key={opt} onClick={(e) => { e.stopPropagation(); onChange(opt); setOpen(false); setSearch(""); }} className={`flex items-center gap-[6px] px-3 py-[5px] mx-[4px] rounded-md text-[13px] cursor-pointer hover:bg-hover ${opt === value ? "text-accent" : "text-text-primary"}`}>
-              <span className="truncate">{opt}</span>
-              {opt === value && <Check size={13} className="ml-auto text-accent shrink-0" />}
-            </div>
-          ))}
+    <div
+      className="rounded-[8px] flex items-center justify-center shrink-0"
+      style={{ width: size, height: size, backgroundColor: bg }}
+    >
+      <Icon size={iconSize} strokeWidth={2} className="text-white" />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SVG EDGE PATH
+   ═══════════════════════════════════════════════════════════ */
+function getEdgePath(from, to) {
+  const fx = from.x + NODE_W / 2;
+  const fy = from.y + NODE_H;
+  const tx = to.x + NODE_W / 2;
+  const ty = to.y;
+  const dy = Math.abs(ty - fy);
+  const cp = Math.max(40, dy * 0.45);
+  return `M ${fx} ${fy} C ${fx} ${fy + cp}, ${tx} ${ty - cp}, ${tx} ${ty}`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   WORKFLOW NODE
+   ═══════════════════════════════════════════════════════════ */
+function WorkflowNode({ node, selected, onSelect, onMouseDown, onDelete }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [menuOpen]);
+
+  return (
+    <div
+      style={{ position: "absolute", left: node.x, top: node.y, width: NODE_W }}
+      className={`rounded-[12px] border ${selected ? "border-[#7c3aed] shadow-[0_0_0_1px_#7c3aed]" : "border-[#333333]"} bg-[#2A2A2A] shadow-[0_2px_12px_rgba(0,0,0,0.3)] select-none z-10 transition-shadow`}
+    >
+      {/* Top connector dot */}
+      {node.type !== "trigger" && (
+        <div className="absolute -top-[5px] left-1/2 -translate-x-1/2 w-[10px] h-[10px] rounded-full bg-[#4caf50] border-2 border-[#2A2A2A] z-20" />
+      )}
+
+      <div
+        className="flex items-center gap-[10px] px-[12px] cursor-grab active:cursor-grabbing"
+        style={{ height: NODE_H }}
+        onMouseDown={(e) => { e.stopPropagation(); onMouseDown(e, node.id); }}
+        onClick={(e) => { e.stopPropagation(); onSelect(node.id); }}
+      >
+        <NodeIcon type={node.iconType} bg={node.iconBg} size={32} />
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] font-semibold text-text-primary truncate">{node.title}</div>
+          {node.subtitle && <div className="text-[11px] text-text-tertiary truncate">{node.subtitle}</div>}
         </div>
+        {/* Status dot for AI nodes */}
+        {node.type === "ai" && (
+          <div className="w-[8px] h-[8px] rounded-full bg-[#4caf50] shrink-0" />
+        )}
+        {/* Menu */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
+            className="p-[3px] rounded-md text-text-tertiary hover:text-text-primary hover:bg-[#333333] transition-colors"
+          >
+            <MoreHorizontal size={14} />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-[2px] w-[140px] bg-[#2A2A2A] rounded-lg border border-[#333333] shadow-[0_4px_20px_rgba(0,0,0,0.4)] z-50 py-[4px]">
+              <div onClick={(e) => { e.stopPropagation(); onSelect(node.id); setMenuOpen(false); }} className="flex items-center gap-[8px] px-3 py-[5px] mx-[4px] rounded-md text-[13px] cursor-pointer hover:bg-[#333333] text-text-primary">
+                <ExternalLink size={13} /> Inspect
+              </div>
+              <div className="border-t border-[#333333] my-[2px]" />
+              <div onClick={(e) => { e.stopPropagation(); onDelete(node.id); setMenuOpen(false); }} className="flex items-center gap-[8px] px-3 py-[5px] mx-[4px] rounded-md text-[13px] cursor-pointer hover:bg-[#333333] text-[#e53935]">
+                <X size={13} /> Delete
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom connector dot */}
+      {node.type !== "end" && (
+        <div className="absolute -bottom-[5px] left-1/2 -translate-x-1/2 w-[10px] h-[10px] rounded-full bg-[#4caf50] border-2 border-[#2A2A2A] z-20" />
       )}
     </div>
   );
 }
 
-/* ── Inline text edit ── */
-function InlineEdit({ value, onSave, className = "" }) {
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(value);
-  useEffect(() => setText(value), [value]);
-  if (editing) {
-    return (
-      <input
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => { if (text.trim()) onSave(text.trim()); setEditing(false); }}
-        onKeyDown={(e) => { if (e.key === "Enter") { if (text.trim()) onSave(text.trim()); setEditing(false); } if (e.key === "Escape") { setText(value); setEditing(false); } }}
-        autoFocus
-        className={`bg-transparent outline-none border-b border-accent ${className}`}
-        onClick={(e) => e.stopPropagation()}
-      />
-    );
-  }
-  return <span onClick={(e) => { e.stopPropagation(); setEditing(true); }} className={`cursor-text hover:bg-hover/50 rounded px-[1px] -mx-[1px] transition-colors ${className}`} title="Click to edit">{value}</span>;
+/* ═══════════════════════════════════════════════════════════
+   LIBRARY SIDEBAR
+   ═══════════════════════════════════════════════════════════ */
+function LibrarySidebar({ onAddNode }) {
+  const [logicOpen, setLogicOpen] = useState(true);
+
+  return (
+    <div className="w-[240px] shrink-0 border-r border-[#333333] bg-[#1E1E1E] flex flex-col h-full">
+      <div className="flex items-center justify-between px-[16px] h-[48px] shrink-0">
+        <span className="text-[14px] font-semibold text-text-primary">Library</span>
+        <button className="p-[4px] rounded-md text-text-tertiary hover:text-text-primary hover:bg-[#333333]">
+          <BookOpen size={15} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-[12px] pb-[12px]">
+        {/* Logic Blocks */}
+        <button onClick={() => setLogicOpen(!logicOpen)} className="flex items-center gap-[6px] text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-[8px] mt-[4px] px-[4px] hover:text-text-secondary w-full">
+          LOGIC BLOCKS
+          <ChevronDown size={12} className={`transition-transform ${logicOpen ? "" : "-rotate-90"}`} />
+        </button>
+        {logicOpen && (
+          <div className="grid grid-cols-2 gap-[8px] mb-[20px]">
+            {LOGIC_BLOCKS.map((b) => (
+              <button
+                key={b.id}
+                onClick={() => onAddNode(b)}
+                className="flex flex-col items-center gap-[6px] py-[14px] rounded-[10px] border border-[#333333] bg-[#2A2A2A] hover:border-[#444444] hover:bg-[#2E2E2E] transition-colors cursor-pointer"
+              >
+                <NodeIcon type={b.iconType} bg={b.iconBg} size={28} />
+                <span className="text-[12px] text-text-primary font-medium">{b.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Integrations */}
+        <div className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-[8px] px-[4px]">INTEGRATIONS</div>
+        <div className="space-y-[4px] mb-[20px]">
+          {INTEGRATIONS.map((int) => (
+            <button
+              key={int.id}
+              onClick={() => onAddNode({ type: "action", title: int.name, iconType: "zap", iconBg: int.color })}
+              className="flex items-center gap-[10px] w-full px-[10px] py-[10px] rounded-[10px] border border-[#333333] bg-[#2A2A2A] hover:border-[#444444] hover:bg-[#2E2E2E] transition-colors cursor-pointer"
+            >
+              <div className="w-[32px] h-[32px] rounded-[8px] flex items-center justify-center text-[14px] font-bold text-white shrink-0" style={{ backgroundColor: int.color }}>
+                {int.letter}
+              </div>
+              <div className="text-left min-w-0">
+                <div className="text-[13px] font-medium text-text-primary">{int.name}</div>
+                <div className="text-[11px] text-text-tertiary">{int.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Snippets */}
+        <div className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-[8px] px-[4px]">SNIPPETS</div>
+        <button className="w-full px-[12px] py-[10px] rounded-[10px] border border-dashed border-[#333333] text-[12px] text-text-tertiary hover:text-text-secondary hover:border-[#444444] transition-colors">
+          Save current selection as snippet
+        </button>
+      </div>
+
+      {/* User */}
+      <div className="flex items-center justify-between px-[14px] py-[12px] border-t border-[#333333] shrink-0">
+        <div className="flex items-center gap-[8px]">
+          <Avatar initials="AM" bg="bg-[#7c3aed]" size={28} />
+          <div>
+            <div className="text-[13px] font-medium text-text-primary">Alex Morgan</div>
+            <div className="text-[11px] text-text-tertiary">Pro Plan</div>
+          </div>
+        </div>
+        <button className="p-[4px] rounded-md text-text-tertiary hover:text-text-primary hover:bg-[#333333]">
+          <MoreHorizontal size={15} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
-/* ── Dry run modal ── */
-function DryRunModal({ rule, onClose }) {
-  const [running, setRunning] = useState(true);
-  const [results, setResults] = useState([]);
+/* ═══════════════════════════════════════════════════════════
+   NODE INSPECTOR
+   ═══════════════════════════════════════════════════════════ */
+function NodeInspector({ node, onClose, onUpdate }) {
+  const [prompt, setPrompt] = useState(node.config?.prompt || "");
+  const [temp, setTemp] = useState(node.config?.temperature ?? 0.5);
+  const [model, setModel] = useState(node.config?.model || "GPT-4o-mini (Fastest)");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setRunning(false);
-      setResults([
-        { issue: "ENG-195", match: true, action: rule.action },
-        { issue: "ENG-222", match: true, action: rule.action },
-        { issue: "ENG-210", match: false, reason: "Condition not met" },
-        { issue: "ENG-201", match: false, reason: "Already processed" },
-      ]);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [rule]);
+    setPrompt(node.config?.prompt || "");
+    setTemp(node.config?.temperature ?? 0.5);
+    setModel(node.config?.model || "GPT-4o-mini (Fastest)");
+  }, [node.id]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="bg-surface-card rounded-[16px] border border-divider shadow-[0_8px_40px_rgba(0,0,0,0.25)] w-[480px] max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between px-[20px] py-[14px] border-b border-divider">
-          <div className="flex items-center gap-[8px]">
-            <Play size={15} className="text-[#f59e0b]" />
-            <span className="text-[14px] font-semibold text-text-primary">Dry Run — {rule.name}</span>
-          </div>
-          <button onClick={onClose} className="p-[4px] rounded-md hover:bg-hover text-text-tertiary"><X size={16} /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-[20px]">
-          {running ? (
-            <div className="flex flex-col items-center py-[32px] gap-[12px]">
-              <div className="w-[32px] h-[32px] border-2 border-accent border-t-transparent rounded-full animate-spin" />
-              <span className="text-[13px] text-text-secondary">Testing rule against existing issues...</span>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-[8px] mb-[16px]">
-                <span className="text-[13px] font-medium text-text-primary">Results</span>
-                <span className="text-[12px] text-text-tertiary">{results.filter((r) => r.match).length} of {results.length} issues matched</span>
-              </div>
-              <div className="space-y-[6px]">
-                {results.map((r) => (
-                  <div key={r.issue} className={`flex items-center gap-[10px] px-[12px] py-[8px] rounded-[8px] ${r.match ? "bg-[#e8f5e9] dark:bg-[#1b3a1e]" : "bg-surface"}`}>
-                    {r.match ? <Check size={14} className="text-[#4caf50] shrink-0" /> : <X size={14} className="text-text-tertiary shrink-0" />}
-                    <span className="text-[13px] font-mono text-text-primary">{r.issue}</span>
-                    <span className="text-[12px] text-text-secondary truncate flex-1">{r.match ? r.action : r.reason}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+  const handleSave = () => {
+    onUpdate(node.id, {
+      config: { ...node.config, prompt, temperature: temp, model },
+    });
+  };
 
-/* ── Rule detail panel ── */
-function RuleDetailPanel({ rule, onClose, onUpdate, onDryRun }) {
-  const team = TEAMS.find((t) => t.id === rule.team);
-  return (
-    <div className="fixed inset-y-0 right-0 w-[420px] bg-surface-card border-l border-divider shadow-[-4px_0_24px_rgba(0,0,0,0.12)] z-40 flex flex-col animate-[slideIn_0.2s_ease-out]">
-      <div className="flex items-center justify-between px-[20px] py-[14px] border-b border-divider shrink-0">
-        <div className="flex items-center gap-[8px]">
-          <Zap size={15} className="text-accent" />
-          <span className="text-[13px] font-medium text-text-primary">Rule Details</span>
-        </div>
-        <button onClick={onClose} className="p-[5px] rounded-md hover:bg-hover text-text-tertiary"><X size={16} /></button>
-      </div>
-      <div className="flex-1 overflow-y-auto px-[20px] py-[16px] space-y-[16px]">
-        {/* Name */}
-        <div>
-          <span className="text-[12px] text-text-tertiary block mb-[4px]">Name</span>
-          <InlineEdit value={rule.name} onSave={(v) => onUpdate(rule.id, { name: v })} className="text-[16px] font-medium text-text-primary" />
-        </div>
-        {/* Status */}
-        <div className="flex items-center justify-between">
-          <span className="text-[12px] text-text-tertiary">Status</span>
-          <button onClick={() => onUpdate(rule.id, { enabled: !rule.enabled })} className={`inline-flex items-center gap-[6px] text-[13px] font-medium px-[10px] py-[5px] rounded-md transition-colors ${rule.enabled ? "text-[#4caf50] bg-[#e8f5e9] dark:bg-[#1b3a1e]" : "text-text-tertiary bg-surface-muted"}`}>
-            {rule.enabled ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-            {rule.enabled ? "Enabled" : "Disabled"}
-          </button>
-        </div>
-        {/* Trigger */}
-        <div>
-          <span className="text-[12px] text-text-tertiary block mb-[4px]">Trigger</span>
-          <EditablePill value={rule.trigger} options={TRIGGER_OPTIONS} onChange={(v) => onUpdate(rule.id, { trigger: v })} color="bg-[#e8eaf6] dark:bg-[#2a2d4a] text-[#5e6ad2] dark:text-[#9da5f0]" />
-        </div>
-        {/* Condition */}
-        <div>
-          <span className="text-[12px] text-text-tertiary block mb-[4px]">Condition</span>
-          <InlineEdit value={rule.condition} onSave={(v) => onUpdate(rule.id, { condition: v })} className="text-[13px] text-text-primary bg-[#fff8e1] dark:bg-[#3e3510] text-[#f57f17] dark:text-[#fff176] rounded-[4px] px-[6px] py-[3px]" />
-        </div>
-        {/* Action */}
-        <div>
-          <span className="text-[12px] text-text-tertiary block mb-[4px]">Action</span>
-          <EditablePill value={rule.action} options={ACTION_OPTIONS} onChange={(v) => onUpdate(rule.id, { action: v })} color="bg-[#e8f5e9] dark:bg-[#1b3a1e] text-[#2e7d32] dark:text-[#81c784]" />
-        </div>
-        {/* Team */}
-        <div className="flex items-center gap-[12px]">
-          <span className="text-[12px] text-text-tertiary w-[72px]">Team</span>
-          <span className="text-[13px] text-text-primary">{team?.name || "—"}</span>
-        </div>
-        {/* Executions */}
-        <div className="flex items-center gap-[12px]">
-          <span className="text-[12px] text-text-tertiary w-[72px]">Executions</span>
-          <span className="text-[13px] text-text-primary flex items-center gap-[4px]"><Activity size={13} /> {rule.executions}</span>
-        </div>
-        <div className="border-t border-divider pt-[16px]">
-          <button onClick={() => onDryRun(rule)} className="inline-flex items-center gap-[6px] bg-[#fff8e1] dark:bg-[#3e3510] text-[#f57f17] dark:text-[#fff176] rounded-[8px] px-[14px] py-[7px] text-[13px] font-medium hover:opacity-80 transition-colors w-full justify-center">
-            <Play size={14} /> Run Dry Test
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Rule Card ── */
-function RuleCard({ rule, onUpdate, onDelete, onSelect, onDryRun }) {
-  const team = TEAMS.find((t) => t.id === rule.team);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
-  useClickOutside(menuRef, () => setMenuOpen(false));
-
-  return (
-    <div onClick={() => onSelect(rule)} className="bg-surface-card border border-divider rounded-[12px] p-[16px] hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:border-text-tertiary/30 transition-all cursor-pointer group">
-      <div className="flex items-start justify-between mb-[10px]">
-        <div className="flex items-center gap-[8px] min-w-0 flex-1">
-          <div className={`w-[8px] h-[8px] rounded-full shrink-0 ${rule.enabled ? "bg-[#4caf50]" : "bg-text-tertiary"}`} />
-          <span className="text-[13px] font-medium text-text-primary truncate">{rule.name}</span>
-        </div>
-        <div className="flex items-center gap-[4px] shrink-0">
-          <button
-            onClick={(e) => { e.stopPropagation(); onUpdate(rule.id, { enabled: !rule.enabled }); }}
-            className="text-text-tertiary hover:text-text-primary transition-colors"
-            title={rule.enabled ? "Disable rule" : "Enable rule"}
-          >
-            {rule.enabled ? <ToggleRight size={20} className="text-accent" /> : <ToggleLeft size={20} />}
-          </button>
-          <div className="relative" ref={menuRef}>
-            <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="p-[3px] rounded-md text-text-tertiary hover:text-text-primary hover:bg-hover opacity-0 group-hover:opacity-100 transition-all">
-              <MoreHorizontal size={14} />
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 top-full mt-[2px] w-[160px] bg-surface-card rounded-lg border border-divider shadow-[0_4px_20px_rgba(0,0,0,0.18)] z-30 py-[4px]">
-                <div onClick={(e) => { e.stopPropagation(); onDryRun(rule); setMenuOpen(false); }} className="flex items-center gap-[8px] px-3 py-[5px] mx-[4px] rounded-md text-[13px] cursor-pointer hover:bg-hover text-text-primary"><Play size={13} /> Dry Run</div>
-                <div onClick={(e) => { e.stopPropagation(); onUpdate(rule.id, { enabled: !rule.enabled }); setMenuOpen(false); }} className="flex items-center gap-[8px] px-3 py-[5px] mx-[4px] rounded-md text-[13px] cursor-pointer hover:bg-hover text-text-primary">{rule.enabled ? <Pause size={13} /> : <Play size={13} />}{rule.enabled ? "Disable" : "Enable"}</div>
-                <div onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(rule.name); setMenuOpen(false); }} className="flex items-center gap-[8px] px-3 py-[5px] mx-[4px] rounded-md text-[13px] cursor-pointer hover:bg-hover text-text-primary"><Copy size={13} /> Copy Name</div>
-                <div className="border-t border-divider my-[3px]" />
-                <div onClick={(e) => { e.stopPropagation(); onDelete(rule.id); setMenuOpen(false); }} className="flex items-center gap-[8px] px-3 py-[5px] mx-[4px] rounded-md text-[13px] cursor-pointer hover:bg-hover text-[#e53935]"><Trash2 size={13} /> Delete</div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      {/* Flow */}
-      <div className="flex items-center gap-[6px] mb-[12px] flex-wrap">
-        <span className="inline-flex items-center gap-[4px] bg-[#e8eaf6] dark:bg-[#2a2d4a] text-[#5e6ad2] dark:text-[#9da5f0] rounded-[4px] px-[6px] py-[3px] text-[11px] font-medium"><Zap size={11} />{rule.trigger}</span>
-        <ArrowRight size={12} className="text-text-tertiary shrink-0" />
-        <span className="inline-flex items-center bg-[#fff8e1] dark:bg-[#3e3510] text-[#f57f17] dark:text-[#fff176] rounded-[4px] px-[6px] py-[3px] text-[11px] font-medium truncate max-w-[180px]">{rule.condition}</span>
-        <ArrowRight size={12} className="text-text-tertiary shrink-0" />
-        <span className="inline-flex items-center bg-[#e8f5e9] dark:bg-[#1b3a1e] text-[#2e7d32] dark:text-[#81c784] rounded-[4px] px-[6px] py-[3px] text-[11px] font-medium truncate max-w-[180px]">{rule.action}</span>
-      </div>
-      <div className="flex items-center justify-between text-[12px] text-text-secondary">
-        <span className="inline-flex items-center gap-[4px]"><Activity size={12} />{rule.executions} executions</span>
-        <span>{team?.name}</span>
-      </div>
-    </div>
-  );
-}
-
-/* ── New rule form ── */
-function NewRuleForm({ onSubmit, onCancel }) {
-  const [name, setName] = useState("");
-  const [trigger, setTrigger] = useState("Issue created");
-  const [condition, setCondition] = useState("");
-  const [action, setAction] = useState("Change status to In Review");
-  const [team, setTeam] = useState("t1");
-  const ref = useRef(null);
-  useEffect(() => { ref.current?.focus(); }, []);
-
-  const handleSubmit = () => {
-    if (!name.trim() || !condition.trim()) return;
-    onSubmit({ name: name.trim(), trigger, condition: condition.trim(), action, team });
+  const handleCopy = () => {
+    navigator.clipboard.writeText(node.config?.schema || "");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
 
   return (
-    <div className="bg-surface-card border border-accent/50 rounded-[12px] p-[16px] space-y-[10px]">
-      <input ref={ref} value={name} onChange={(e) => setName(e.target.value)} placeholder="Rule name..." className="w-full bg-transparent text-[14px] font-medium text-text-primary placeholder:text-text-tertiary outline-none" />
-      <div className="flex items-center gap-[6px] flex-wrap">
-        <select value={trigger} onChange={(e) => setTrigger(e.target.value)} className="bg-[#e8eaf6] dark:bg-[#2a2d4a] text-[#5e6ad2] dark:text-[#9da5f0] rounded-[4px] px-[6px] py-[3px] text-[11px] font-medium border-none outline-none cursor-pointer">
-          {TRIGGER_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <ArrowRight size={12} className="text-text-tertiary" />
-        <input value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="Condition..." className="bg-[#fff8e1] dark:bg-[#3e3510] text-[#f57f17] dark:text-[#fff176] rounded-[4px] px-[6px] py-[3px] text-[11px] font-medium outline-none placeholder:text-[#f57f17]/50 w-[160px]" />
-        <ArrowRight size={12} className="text-text-tertiary" />
-        <select value={action} onChange={(e) => setAction(e.target.value)} className="bg-[#e8f5e9] dark:bg-[#1b3a1e] text-[#2e7d32] dark:text-[#81c784] rounded-[4px] px-[6px] py-[3px] text-[11px] font-medium border-none outline-none cursor-pointer">
-          {ACTION_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
+    <div className="w-[290px] shrink-0 border-l border-[#333333] bg-[#1E1E1E] flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between px-[16px] h-[48px] border-b border-[#333333] shrink-0">
+        <div className="flex items-center gap-[8px] min-w-0">
+          <NodeIcon type={node.iconType} bg={node.iconBg} size={24} />
+          <span className="text-[14px] font-semibold text-text-primary truncate">{node.title}</span>
+        </div>
+        <div className="flex items-center gap-[2px] shrink-0">
+          <button className="p-[4px] rounded-md text-text-tertiary hover:text-text-primary hover:bg-[#333333]">
+            <ExternalLink size={14} />
+          </button>
+          <button onClick={onClose} className="p-[4px] rounded-md text-text-tertiary hover:text-text-primary hover:bg-[#333333]">
+            <X size={14} />
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-[8px]">
-        <button onClick={handleSubmit} disabled={!name.trim() || !condition.trim()} className={`text-[12px] px-[10px] py-[5px] rounded-md font-medium transition-colors ${name.trim() && condition.trim() ? "bg-accent text-white hover:opacity-90" : "bg-surface-muted text-text-tertiary cursor-not-allowed"}`}>Create Rule</button>
-        <button onClick={onCancel} className="text-[12px] text-text-tertiary hover:text-text-primary transition-colors">Cancel</button>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-[16px] py-[16px] space-y-[16px]">
+        {node.type === "ai" && (
+          <>
+            {/* Model */}
+            <div>
+              <label className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-[6px] block">AI Model</label>
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className="w-full bg-[#2A2A2A] border border-[#333333] rounded-[8px] px-[10px] py-[8px] text-[13px] text-text-primary outline-none focus:border-[#7c3aed] transition-colors appearance-none cursor-pointer"
+              >
+                <option>GPT-4o-mini (Fastest)</option>
+                <option>GPT-4o (Balanced)</option>
+                <option>GPT-4.5 (Most Capable)</option>
+                <option>Claude Sonnet 4.6</option>
+                <option>Claude Opus 4.6</option>
+              </select>
+              <p className="text-[11px] text-text-tertiary mt-[4px]">Estimated cost: {node.config?.cost || "$0.002 per run"}</p>
+            </div>
+
+            {/* Prompt */}
+            <div>
+              <div className="flex items-center justify-between mb-[6px]">
+                <label className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">System Prompt</label>
+                <button className="text-[11px] text-[#7c3aed] hover:text-[#9f7aea] font-medium">Optimize with AI</button>
+              </div>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={7}
+                className="w-full bg-[#2A2A2A] border border-[#333333] rounded-[8px] px-[10px] py-[8px] text-[13px] text-text-primary placeholder:text-text-tertiary outline-none focus:border-[#7c3aed] resize-none leading-[1.6] transition-colors"
+              />
+            </div>
+
+            {/* Temperature */}
+            <div>
+              <div className="flex items-center justify-between mb-[6px]">
+                <label className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">Temperature</label>
+                <span className="text-[13px] font-semibold text-text-primary">{temp.toFixed(1)}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={temp}
+                onChange={(e) => setTemp(parseFloat(e.target.value))}
+                className="w-full h-[4px] rounded-full appearance-none cursor-pointer accent-[#7c3aed]"
+                style={{ background: `linear-gradient(to right, #7c3aed ${temp * 100}%, #333333 ${temp * 100}%)` }}
+              />
+            </div>
+
+            {/* Output Schema */}
+            {node.config?.schema && (
+              <div>
+                <div className="flex items-center justify-between mb-[6px]">
+                  <label className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">Output Schema</label>
+                  <button onClick={handleCopy} className="flex items-center gap-[4px] text-[11px] text-text-tertiary hover:text-text-primary">
+                    <Copy size={11} /> {copied ? "Copied" : ""}
+                  </button>
+                </div>
+                <div className="relative">
+                  <span className="absolute top-[8px] right-[8px] text-[10px] font-semibold bg-[#7c3aed] text-white rounded px-[6px] py-[1px]">JSON</span>
+                  <pre className="bg-[#2A2A2A] border border-[#333333] rounded-[8px] px-[12px] py-[10px] text-[12px] leading-[1.7] overflow-x-auto">
+                    <span className="text-text-tertiary">{"{"}</span>{"\n"}
+                    <span className="text-[#82aaff]">  "sentiment"</span><span className="text-text-tertiary">:</span> <span className="text-[#c3e88d]">0.85</span><span className="text-text-tertiary">,</span>{"\n"}
+                    <span className="text-[#82aaff]">  "urgency"</span><span className="text-text-tertiary">:</span> <span className="text-[#c3e88d]">"low"</span><span className="text-text-tertiary">,</span>{"\n"}
+                    <span className="text-[#82aaff]">  "summary"</span><span className="text-text-tertiary">:</span> <span className="text-[#c3e88d]">"User loves the new dashboard"</span>{"\n"}
+                    <span className="text-text-tertiary">{"}"}</span>
+                  </pre>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {node.type === "route" && (
+          <div>
+            <label className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-[6px] block">Condition</label>
+            <input
+              value={node.config?.condition || ""}
+              onChange={(e) => onUpdate(node.id, { config: { ...node.config, condition: e.target.value }, subtitle: `If ${e.target.value}` })}
+              className="w-full bg-[#2A2A2A] border border-[#333333] rounded-[8px] px-[10px] py-[8px] text-[13px] text-text-primary outline-none focus:border-[#7c3aed] font-mono transition-colors"
+            />
+          </div>
+        )}
+
+        {node.type === "action" && (
+          <>
+            <div>
+              <label className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-[6px] block">Integration</label>
+              <div className="bg-[#2A2A2A] border border-[#333333] rounded-[8px] px-[10px] py-[8px] text-[13px] text-text-primary">
+                {node.config?.integration || "Custom"}
+              </div>
+            </div>
+            {node.config?.channel && (
+              <div>
+                <label className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-[6px] block">Channel</label>
+                <input
+                  value={node.config.channel}
+                  onChange={(e) => onUpdate(node.id, { config: { ...node.config, channel: e.target.value }, subtitle: `Channel: ${e.target.value}` })}
+                  className="w-full bg-[#2A2A2A] border border-[#333333] rounded-[8px] px-[10px] py-[8px] text-[13px] text-text-primary outline-none focus:border-[#7c3aed] font-mono transition-colors"
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {node.type === "trigger" && (
+          <div>
+            <label className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-[6px] block">Trigger Type</label>
+            <select className="w-full bg-[#2A2A2A] border border-[#333333] rounded-[8px] px-[10px] py-[8px] text-[13px] text-text-primary outline-none focus:border-[#7c3aed] appearance-none cursor-pointer transition-colors">
+              <option>Zendesk Webhook</option>
+              <option>HTTP Request</option>
+              <option>Schedule (Cron)</option>
+              <option>Email Received</option>
+            </select>
+          </div>
+        )}
+
+        {node.type === "end" && (
+          <div className="flex flex-col items-center py-[20px] text-text-tertiary">
+            <CheckCircle2 size={32} strokeWidth={1.5} className="mb-[8px] text-[#4caf50] opacity-60" />
+            <p className="text-[13px]">End of workflow</p>
+            <p className="text-[11px] mt-[2px]">All branches converge here</p>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between px-[16px] py-[12px] border-t border-[#333333] shrink-0">
+        <button className="flex items-center gap-[6px] text-[13px] text-text-secondary hover:text-text-primary px-[12px] py-[6px] rounded-[8px] border border-[#333333] hover:bg-[#333333] transition-colors">
+          <Play size={13} /> Test Step
+        </button>
+        <button onClick={handleSave} className="flex items-center gap-[6px] text-[13px] text-white font-medium px-[14px] py-[6px] rounded-[8px] bg-[#7c3aed] hover:bg-[#6d28d9] transition-colors">
+          Save Changes
+        </button>
       </div>
     </div>
   );
 }
 
-/* ── Main ── */
+/* ═══════════════════════════════════════════════════════════
+   MAIN AUTOMATIONS PAGE
+   ═══════════════════════════════════════════════════════════ */
 export default function Automations() {
-  const [rules, setRules] = useState(() => [...SEED_RULES]);
-  const [selected, setSelected] = useState(null);
-  const [creating, setCreating] = useState(false);
-  const [dryRunRule, setDryRunRule] = useState(null);
-  const [nextId, setNextId] = useState(10);
+  const [nodes, setNodes] = useState(() => SEED_NODES.map((n) => ({ ...n })));
+  const [edges, setEdges] = useState(() => [...SEED_EDGES]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [zoom, setZoom] = useState(100);
+  const [nextId, setNextId] = useState(20);
+  const dragRef = useRef(null);
 
-  const enabled = rules.filter((r) => r.enabled);
-  const disabled = rules.filter((r) => !r.enabled);
+  const selectedNode = nodes.find((n) => n.id === selectedId) || null;
+
+  // Drag
+  const handleMouseDown = useCallback((e, nodeId) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    dragRef.current = { id: nodeId, offX: e.clientX - node.x, offY: e.clientY - node.y };
+
+    const onMove = (ev) => {
+      if (!dragRef.current) return;
+      setNodes((prev) =>
+        prev.map((n) =>
+          n.id === dragRef.current.id
+            ? { ...n, x: ev.clientX - dragRef.current.offX, y: ev.clientY - dragRef.current.offY }
+            : n
+        )
+      );
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [nodes]);
 
   const handleUpdate = useCallback((id, updates) => {
-    setRules((prev) => prev.map((r) => r.id === id ? { ...r, ...updates } : r));
-    if (selected?.id === id) setSelected((prev) => prev ? { ...prev, ...updates } : prev);
-  }, [selected]);
+    setNodes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)));
+  }, []);
 
   const handleDelete = useCallback((id) => {
-    setRules((prev) => prev.filter((r) => r.id !== id));
-    if (selected?.id === id) setSelected(null);
-  }, [selected]);
+    setNodes((prev) => prev.filter((n) => n.id !== id));
+    setEdges((prev) => prev.filter((e) => e.from !== id && e.to !== id));
+    if (selectedId === id) setSelectedId(null);
+  }, [selectedId]);
 
-  const handleCreate = useCallback((data) => {
-    const newRule = { id: `r${nextId}`, ...data, enabled: true, executions: 0 };
-    setRules((prev) => [...prev, newRule]);
+  const handleAddNode = useCallback((block) => {
+    const newNode = {
+      id: `n${nextId}`,
+      type: block.type,
+      title: block.title || block.name || "New Node",
+      subtitle: "",
+      x: 300 + Math.random() * 100,
+      y: 200 + Math.random() * 200,
+      iconBg: block.iconBg || block.color || "#7c3aed",
+      iconType: block.iconType || "zap",
+      config: block.type === "ai" ? { model: "GPT-4o-mini (Fastest)", cost: "$0.002 per run", prompt: "", temperature: 0.5, schema: "" } : block.type === "route" ? { condition: "" } : {},
+    };
+    setNodes((prev) => [...prev, newNode]);
     setNextId((n) => n + 1);
-    setCreating(false);
+    setSelectedId(newNode.id);
   }, [nextId]);
 
-  const currentSelected = selected ? rules.find((r) => r.id === selected.id) : null;
+  // Canvas size
+  const canvasW = useMemo(() => {
+    let max = 1000;
+    nodes.forEach((n) => { if (n.x + NODE_W + 60 > max) max = n.x + NODE_W + 60; });
+    return max;
+  }, [nodes]);
+  const canvasH = useMemo(() => {
+    let max = 850;
+    nodes.forEach((n) => { if (n.y + NODE_H + 80 > max) max = n.y + NODE_H + 80; });
+    return max;
+  }, [nodes]);
+
+  // Edge paths
+  const edgePaths = useMemo(() => {
+    return edges.map((e) => {
+      const from = nodes.find((n) => n.id === e.from);
+      const to = nodes.find((n) => n.id === e.to);
+      if (!from || !to) return null;
+      return { key: `${e.from}-${e.to}`, d: getEdgePath(from, to) };
+    }).filter(Boolean);
+  }, [nodes, edges]);
 
   return (
-    <div className="bg-surface min-h-full overflow-y-auto">
-      <div className="px-6 pt-[24px] pb-[16px]">
-        <div className="flex items-center justify-between mb-[20px]">
-          <div>
-            <h1 className="text-[18px] font-semibold text-text-primary tracking-tight">Workflow Automations</h1>
-            <p className="text-[13px] text-text-secondary mt-[2px]">Automate status transitions, assignments, and notifications with rule-based triggers</p>
+    <div className="h-full flex flex-col bg-[#1E1E1E]">
+      {/* ── Top Bar ── */}
+      <div className="flex items-center justify-between px-[16px] h-[48px] border-b border-[#333333] shrink-0 bg-[#1E1E1E]">
+        <div className="flex items-center gap-[8px]">
+          <span className="text-[13px] text-text-tertiary">Workflows</span>
+          <span className="text-text-tertiary">/</span>
+          <span className="text-[14px] font-semibold text-text-primary">Customer Support Agent v2</span>
+          <span className="text-[11px] font-semibold bg-[#f59e0b]/20 text-[#f59e0b] rounded px-[6px] py-[1px]">Draft</span>
+        </div>
+        <div className="flex items-center gap-[8px]">
+          <div className="flex items-center gap-[8px] bg-[#2A2A2A] border border-[#333333] rounded-[8px] px-[12px] py-[6px] w-[260px]">
+            <Search size={14} className="text-text-tertiary shrink-0" />
+            <span className="text-[13px] text-text-tertiary">Search components, variables, or logic</span>
+            <kbd className="ml-auto text-[10px] text-text-tertiary bg-[#333333] rounded px-[5px] py-[1px]">\u2318K</kbd>
           </div>
-          <button onClick={() => setCreating(true)} className="inline-flex items-center gap-[6px] bg-accent text-white rounded-[8px] px-[14px] py-[7px] text-[13px] font-medium hover:opacity-90 transition-colors">
-            <Plus size={15} /> New Rule
+          <div className="flex items-center -space-x-[6px] ml-[4px]">
+            <Avatar initials="AM" bg="bg-[#7c3aed]" size={28} border />
+            <Avatar initials="JD" bg="bg-[#06b6d4]" size={28} border />
+          </div>
+          <button className="flex items-center gap-[6px] text-[13px] text-text-primary px-[12px] py-[6px] rounded-[8px] border border-[#333333] hover:bg-[#333333] transition-colors ml-[4px]">
+            <Play size={13} /> Test Run
+          </button>
+          <button className="flex items-center gap-[6px] text-[13px] text-white font-semibold px-[14px] py-[6px] rounded-[8px] bg-[#7c3aed] hover:bg-[#6d28d9] transition-colors">
+            <Rocket size={13} /> Publish
           </button>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-[12px] mb-[24px]">
-          <div className="bg-surface-card border border-divider rounded-[12px] p-[16px]">
-            <span className="text-[12px] text-text-secondary">Active Rules</span>
-            <div className="text-[24px] font-semibold text-text-primary mt-[2px]">{enabled.length}</div>
-          </div>
-          <div className="bg-surface-card border border-divider rounded-[12px] p-[16px]">
-            <span className="text-[12px] text-text-secondary">Total Executions</span>
-            <div className="text-[24px] font-semibold text-text-primary mt-[2px]">{rules.reduce((s, r) => s + r.executions, 0)}</div>
-          </div>
-          <div className="bg-surface-card border border-divider rounded-[12px] p-[16px]">
-            <span className="text-[12px] text-text-secondary">Auto-Transition Rate</span>
-            <div className="text-[24px] font-semibold text-accent mt-[2px]">42%</div>
-          </div>
-        </div>
-
-        {/* Dry-run banner */}
-        <div className="flex items-center gap-[8px] bg-[#fff8e1] dark:bg-[#3e3510] border border-[#ffe082] dark:border-[#5a4a1a] rounded-[8px] px-[14px] py-[10px] mb-[20px] text-[13px]">
-          <AlertTriangle size={15} className="text-[#f57f17] shrink-0" />
-          <span className="text-[#5d4037] dark:text-[#fff176]"><strong>Dry-run mode available</strong> — test rules against existing issues before enabling</span>
-          <button onClick={() => { if (enabled.length > 0) setDryRunRule(enabled[0]); }} className="ml-auto inline-flex items-center gap-[4px] text-[#f57f17] font-medium hover:underline text-[12px]"><Play size={12} /> Try it</button>
-        </div>
-
-        {/* New rule form */}
-        {creating && (
-          <div className="mb-[16px]">
-            <NewRuleForm onSubmit={handleCreate} onCancel={() => setCreating(false)} />
-          </div>
-        )}
-
-        {/* Active rules */}
-        <div className="mb-[20px]">
-          <div className="flex items-center gap-[8px] mb-[10px]">
-            <span className="text-[13px] font-semibold text-text-primary">Active</span>
-            <span className="text-[12px] text-text-tertiary">{enabled.length}</span>
-          </div>
-          <div className="grid gap-[10px]">
-            {enabled.map((r) => <RuleCard key={r.id} rule={r} onUpdate={handleUpdate} onDelete={handleDelete} onSelect={setSelected} onDryRun={setDryRunRule} />)}
-          </div>
-        </div>
-
-        {disabled.length > 0 && (
-          <div>
-            <div className="flex items-center gap-[8px] mb-[10px]">
-              <span className="text-[13px] font-semibold text-text-secondary">Disabled</span>
-              <span className="text-[12px] text-text-tertiary">{disabled.length}</span>
-            </div>
-            <div className="grid gap-[10px]">
-              {disabled.map((r) => <RuleCard key={r.id} rule={r} onUpdate={handleUpdate} onDelete={handleDelete} onSelect={setSelected} onDryRun={setDryRunRule} />)}
-            </div>
-          </div>
-        )}
       </div>
 
-      {currentSelected && <RuleDetailPanel rule={currentSelected} onClose={() => setSelected(null)} onUpdate={handleUpdate} onDryRun={setDryRunRule} />}
-      {dryRunRule && <DryRunModal rule={dryRunRule} onClose={() => setDryRunRule(null)} />}
+      {/* ── Main Area ── */}
+      <div className="flex-1 flex min-h-0">
+        {/* Library */}
+        <LibrarySidebar onAddNode={handleAddNode} />
+
+        {/* Canvas */}
+        <div
+          className="flex-1 overflow-auto relative"
+          style={{ backgroundImage: "radial-gradient(circle, #333333 1px, transparent 1px)", backgroundSize: "24px 24px" }}
+          onClick={() => setSelectedId(null)}
+        >
+          <div className="relative" style={{ width: canvasW, height: canvasH, minWidth: "100%", minHeight: "100%", transform: `scale(${zoom / 100})`, transformOrigin: "top left" }}>
+            {/* SVG edges */}
+            <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
+              {edgePaths.map((ep) => (
+                <path key={ep.key} d={ep.d} fill="none" stroke="#4caf50" strokeWidth="2" strokeOpacity="0.6" />
+              ))}
+            </svg>
+            {/* Nodes */}
+            {nodes.map((n) => (
+              <WorkflowNode
+                key={n.id}
+                node={n}
+                selected={selectedId === n.id}
+                onSelect={setSelectedId}
+                onMouseDown={handleMouseDown}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+
+          {/* Zoom toolbar */}
+          <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 flex items-center gap-[4px] bg-[#2A2A2A] border border-[#333333] rounded-[10px] px-[6px] py-[4px] shadow-[0_4px_20px_rgba(0,0,0,0.3)] z-30">
+            <div className="flex items-center gap-[4px] px-[8px] py-[4px] rounded-[6px] bg-[#333333] text-[12px] text-text-primary">
+              <Search size={12} /> {zoom}%
+            </div>
+            <div className="w-px h-[20px] bg-[#333333]" />
+            <button onClick={() => setSelectedId(null)} className="p-[6px] rounded-[6px] hover:bg-[#333333] text-text-tertiary hover:text-text-primary transition-colors">
+              <MousePointer2 size={14} />
+            </button>
+            <button onClick={() => setZoom((z) => Math.min(200, z + 10))} className="p-[6px] rounded-[6px] hover:bg-[#333333] text-text-tertiary hover:text-text-primary transition-colors">
+              <Plus size={14} />
+            </button>
+            <button onClick={() => setZoom((z) => Math.max(50, z - 10))} className="p-[6px] rounded-[6px] hover:bg-[#333333] text-text-tertiary hover:text-text-primary transition-colors">
+              <ZoomIn size={14} />
+            </button>
+            <button onClick={() => setZoom(100)} className="p-[6px] rounded-[6px] hover:bg-[#333333] text-text-tertiary hover:text-text-primary transition-colors">
+              <Maximize2 size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Inspector */}
+        {selectedNode && (
+          <NodeInspector
+            node={selectedNode}
+            onClose={() => setSelectedId(null)}
+            onUpdate={handleUpdate}
+          />
+        )}
+      </div>
     </div>
   );
 }

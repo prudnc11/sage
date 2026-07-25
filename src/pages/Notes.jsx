@@ -37,7 +37,7 @@ export default function Notes() {
     <div className="bg-surface h-full flex">
       {/* Sidebar */}
       <div className="w-[260px] shrink-0 border-r border-divider flex flex-col">
-        <div className="px-[14px] pt-[20px] pb-[10px] shrink-0">
+        <div className="px-[14px] pt-[24px] pb-[10px] shrink-0">
           <div className="flex items-center justify-between mb-[12px]">
             <h2 className="text-[14px] font-semibold text-text-primary">My Notes</h2>
             <button onClick={handleCreate} className="p-[4px] rounded-md text-text-tertiary hover:text-text-primary hover:bg-hover" title="New note"><Plus size={16} /></button>
@@ -71,7 +71,7 @@ export default function Notes() {
       <div className="flex-1 flex flex-col min-w-0">
         {selected ? (
           <>
-            <div className="px-[24px] pt-[20px] pb-[10px] shrink-0">
+            <div className="px-[24px] pt-[24px] pb-[10px] shrink-0">
               <input
                 value={selected.title}
                 onChange={(e) => handleUpdate(selected.id, { title: e.target.value })}

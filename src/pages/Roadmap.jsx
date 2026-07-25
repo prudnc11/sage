@@ -134,9 +134,9 @@ const COLUMNS = [
 ];
 
 const TEAM_COLORS = {
-  Engineering: "bg-[#4caf50] text-white",
-  Marketing: "bg-[#e91e63] text-white",
-  Design: "bg-[#5e6ad2] text-white",
+  Engineering: "bg-[#1b3a1e] text-[#81c784]",
+  Marketing: "bg-[#3e1a2a] text-[#f48fb1]",
+  Design: "bg-[#1e2048] text-[#9fa8da]",
 };
 
 /* ── Team tag ── */
@@ -648,7 +648,7 @@ export default function Roadmap() {
   return (
     <div className="bg-surface h-full flex flex-col">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 pt-[20px] pb-[14px] shrink-0">
+      <div className="flex items-center justify-between px-6 pt-[24px] pb-[14px] shrink-0">
         <div className="flex items-center gap-[8px]">
           <BarChart3 size={16} strokeWidth={1.75} className="text-text-secondary" />
           <h1 className="text-[15px] font-semibold text-text-primary">Roadmaps</h1>
