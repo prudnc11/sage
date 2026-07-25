@@ -5,14 +5,10 @@ import {
   ChevronRight,
   MoreHorizontal,
   Code2,
-  Sun,
-  Moon,
 } from "lucide-react";
-import { useTheme } from "../context/ThemeContext";
 
 export default function TopBar({ icon: Icon = Code2, iconColor = "text-[#5e6ad2]", breadcrumb = ["Engineering", "All issues"] }) {
   const navigate = useNavigate();
-  const { dark, toggle } = useTheme();
 
   return (
     <div className="h-[44px] flex items-center px-4 gap-[6px] shrink-0 bg-chrome">
@@ -38,13 +34,6 @@ export default function TopBar({ icon: Icon = Code2, iconColor = "text-[#5e6ad2]
         </button>
       </div>
       <div className="flex-1" />
-      <button
-        onClick={toggle}
-        className="p-[6px] rounded-md hover:bg-surface-pill text-text-primary transition-colors"
-        title={dark ? "Switch to light mode" : "Switch to dark mode"}
-      >
-        {dark ? <Sun size={18} strokeWidth={1.75} /> : <Moon size={18} strokeWidth={1.75} />}
-      </button>
     </div>
   );
 }

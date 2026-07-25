@@ -1,4 +1,4 @@
-/* ── Pulseboard v2 — Mock Data ── */
+/* ── Sage v2 — Mock Data ── */
 
 export const USERS = [
   { id: "u1", name: "Harshith Mullapudi", initials: "HM", bg: "bg-[#43a047]" },

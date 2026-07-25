@@ -38,10 +38,10 @@ function NavItem({ to, icon: Icon, label, collapsed }) {
       to={to}
       title={label}
       className={({ isActive }) =>
-        `inline-flex items-center ${collapsed ? "justify-center p-[8px]" : "gap-[10px] px-[10px] py-[6px]"} rounded-md cursor-pointer text-[13px] text-text-primary overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${isActive ? "bg-surface-active font-normal" : "bg-surface-pill"}`
+        `inline-flex items-center ${collapsed ? "justify-center p-[8px]" : "gap-[10px] px-[10px] py-[6px]"} rounded-md cursor-pointer text-[13px] overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${isActive ? "bg-white text-black font-medium" : "text-text-primary bg-surface-pill"}`
       }
     >
-      <Icon size={16} strokeWidth={1.75} className="shrink-0 text-text-primary" />
+      <Icon size={16} strokeWidth={1.75} className="shrink-0" />
       <span className={`truncate transition-all duration-300 ease-out ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"}`}>{label}</span>
     </NavLink>
   );
@@ -53,10 +53,10 @@ function TeamSubItem({ to, icon: Icon, label, collapsed }) {
       to={to}
       title={label}
       className={({ isActive }) =>
-        `inline-flex items-center ${collapsed ? "justify-center p-[8px]" : "gap-[8px] ml-[18px] px-[10px] py-[5px]"} rounded-md cursor-pointer text-[13px] text-text-primary overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${isActive ? "bg-surface-active font-normal" : "bg-surface-pill"}`
+        `inline-flex items-center ${collapsed ? "justify-center p-[8px]" : "gap-[8px] ml-[18px] px-[10px] py-[5px]"} rounded-md cursor-pointer text-[13px] overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${isActive ? "bg-white text-black font-medium" : "text-text-primary bg-surface-pill"}`
       }
     >
-      <Icon size={14} strokeWidth={1.75} className="shrink-0 text-text-primary" />
+      <Icon size={14} strokeWidth={1.75} className="shrink-0" />
       <span className={`truncate transition-all duration-300 ease-out ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"}`}>{label}</span>
     </NavLink>
   );
@@ -73,9 +73,9 @@ export default function Sidebar({ collapsed, onToggle }) {
       <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} px-4 h-[44px] overflow-hidden`}>
         <div className="flex items-center gap-[10px] cursor-pointer min-w-0">
           <div className="w-[22px] h-[22px] rounded-[5px] bg-[#5e6ad2] flex items-center justify-center overflow-hidden shrink-0">
-            <span className="text-[11px] font-bold text-white leading-none">P</span>
+            <span className="text-[11px] font-bold text-white leading-none">S</span>
           </div>
-          <span className={`text-[13px] font-semibold text-text-primary whitespace-nowrap transition-all duration-300 ease-out ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"}`}>Pulseboard</span>
+          <span className={`text-[13px] font-semibold text-text-primary whitespace-nowrap transition-all duration-300 ease-out ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"}`}>Sage</span>
           <ChevronDown size={13} className={`text-text-primary ml-[-4px] shrink-0 transition-all duration-300 ease-out ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"}`} />
         </div>
         <button onClick={onToggle} className={`p-[5px] rounded-md hover:bg-surface-pill text-text-primary shrink-0 transition-all duration-300 ease-out ${collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"}`}>
@@ -150,7 +150,6 @@ export default function Sidebar({ collapsed, onToggle }) {
           </div>
           <div className={`flex flex-col items-start gap-[4px] overflow-hidden transition-all duration-300 ease-out ${!collapsed && platformOpen ? "max-h-[200px] opacity-100" : "max-h-0 opacity-0"}`}>
             <TeamSubItem to="/team/platform/triage" icon={ArrowLeftRight} label="Triage" collapsed={collapsed} />
-            <TeamSubItem to="/team/platform/issues" icon={SquareCheckBig} label="Ventryl" collapsed={collapsed} />
             <TeamSubItem to="/team/platform/api-client" icon={Diamond} label="API Client" collapsed={collapsed} />
             <TeamSubItem to="/team/platform/views" icon={PostmanIcon} label="Postman" collapsed={collapsed} />
           </div>
