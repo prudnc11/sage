@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { Code2, Zap, Map, Clock, Settings, Shield, Terminal, Layers, Inbox, FileText, Database as DatabaseIcon } from "lucide-react";
+import { Code2, Zap, Map, Clock, Settings, Shield, Terminal, Inbox, FileText, Database as DatabaseIcon } from "lucide-react";
 import { ThemeProvider } from "./context/ThemeContext";
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
@@ -11,7 +11,6 @@ import Roadmap from "./pages/Roadmap";
 import TimeTracking from "./pages/TimeTracking";
 import SettingsPage from "./pages/Settings";
 import ApiClient from "./pages/ApiClient";
-import PostmanViews from "./pages/PostmanViews";
 import InboxPage from "./pages/Inbox";
 import Notes from "./pages/Notes";
 import DatabasePage from "./pages/Database";
@@ -26,14 +25,12 @@ const ROUTE_CONFIG = {
   "/settings": { icon: Settings, iconColor: "text-[#757575]", breadcrumb: ["Settings"] },
   "/team/engineering/database": { icon: DatabaseIcon, iconColor: "text-[#88C695]", breadcrumb: ["Engineering", "Database"] },
   "/team/engineering/issues": { icon: Code2, iconColor: "text-[#88C695]", breadcrumb: ["Engineering", "Issues"] },
-  "/team/engineering/views": { icon: Layers, iconColor: "text-[#88C695]", breadcrumb: ["Engineering", "Postman"] },
   "/team/platform/database": { icon: DatabaseIcon, iconColor: "text-[#B39DDB]", breadcrumb: ["Side Quests", "Database"] },
   "/team/platform/issues": { icon: Shield, iconColor: "text-[#B39DDB]", breadcrumb: ["Side Quests", "Issues"] },
   "/team/platform/api-client": { icon: Terminal, iconColor: "text-[#B39DDB]", breadcrumb: ["Side Quests", "API Client"] },
-  "/team/platform/views": { icon: Layers, iconColor: "text-[#B39DDB]", breadcrumb: ["Side Quests", "Postman"] },
 };
 
-const HIDE_AI_CHAT = ["/roadmap", "/automations", "/time-tracking", "/settings", "/team/platform/api-client", "/team/platform/views", "/team/engineering/views", "/team/engineering/database", "/team/platform/database"];
+const HIDE_AI_CHAT = ["/roadmap", "/automations", "/inbox", "/time-tracking", "/settings", "/team/platform/api-client", "/team/engineering/database", "/team/platform/database"];
 
 function Layout() {
   const location = useLocation();
@@ -58,11 +55,9 @@ function Layout() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/team/engineering/database" element={<DatabasePage />} />
               <Route path="/team/engineering/issues" element={<Issues />} />
-              <Route path="/team/engineering/views" element={<PostmanViews />} />
               <Route path="/team/platform/database" element={<DatabasePage />} />
               <Route path="/team/platform/issues" element={<Issues />} />
               <Route path="/team/platform/api-client" element={<ApiClient />} />
-              <Route path="/team/platform/views" element={<PostmanViews />} />
               <Route path="*" element={<Issues />} />
             </Routes>
           </div>

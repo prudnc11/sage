@@ -407,7 +407,7 @@ export default function Database() {
       {/* ── Left: Code editor ── */}
       <div className="w-[340px] shrink-0 border-r border-[#333333] flex flex-col bg-[#1E1E1E]">
         {/* Title bar */}
-        <div className="flex items-center gap-[10px] px-[16px] h-[48px] border-b border-[#333333] shrink-0">
+        <div className="flex items-center gap-[10px] px-6 pt-[24px] pb-[12px] border-b border-[#333333] shrink-0">
           <div className="w-[8px] h-[8px] rounded-full bg-[#5e6ad2] shrink-0" />
           {editingTitle ? (
             <input
@@ -470,7 +470,7 @@ export default function Database() {
         </div>
 
         {/* Bottom bar */}
-        <div className="flex items-center justify-between px-[14px] h-[40px] border-t border-[#333333] shrink-0">
+        <div className="flex items-center justify-between px-6 h-[40px] border-t border-[#333333] shrink-0">
           <span className="text-[11px] text-text-tertiary">{tables.length} table{tables.length !== 1 ? "s" : ""} &middot; {refs.length} ref{refs.length !== 1 ? "s" : ""}</span>
           <div className="flex items-center gap-[4px]">
             <button onClick={addNewTable} className="flex items-center gap-[4px] text-[11px] text-text-secondary hover:text-text-primary px-[8px] py-[3px] rounded-md hover:bg-[#333333] transition-colors">

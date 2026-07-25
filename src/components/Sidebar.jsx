@@ -24,14 +24,6 @@ import {
 } from "lucide-react";
 import { IssueStatusIcon, Avatar } from "./shared";
 
-function PostmanIcon({ size = 14, className = "" }) {
-  return (
-    <svg viewBox="0 0 256 256" width={size} height={size} className={className} fill="currentColor">
-      <path d="M181.806 54.086l-52.728 52.728 22.076 22.076c1.728-0.578 3.564-0.897 5.473-0.897 9.636 0 17.449 7.813 17.449 17.449 0 1.909-0.319 3.745-0.897 5.473l20.627 20.627c35.2-35.2 35.2-82.256 0-117.456zM120.48 115.412l-53.578 53.578c32.946 35.946 86.624 38.846 122.854 8.65l-20.627-20.627c-1.728 0.578-3.564 0.897-5.473 0.897-9.636 0-17.449-7.813-17.449-17.449 0-1.909 0.319-3.745 0.897-5.473l-22.076-22.076-4.548 4.548v-2.048zM128 0C57.308 0 0 57.308 0 128s57.308 128 128 128 128-57.308 128-128S198.692 0 128 0zM58.304 177.588c-1.382-1.382-1.382-3.623 0-5.005l53.578-53.578-4.548-4.548 52.728-52.728c38.4 38.4 38.4 100.712 0 139.112-0.038 0.038-0.077 0.073-0.115 0.111l-0.339 0.339c-36.614 33.454-93.078 30.522-126.27-3.67l24.966-24.966v4.933z" />
-    </svg>
-  );
-}
-
 function NavItem({ to, icon: Icon, label, collapsed }) {
   return (
     <NavLink
@@ -133,7 +125,6 @@ export default function Sidebar({ collapsed, onToggle }) {
           <div className={`flex flex-col items-start gap-[4px] overflow-hidden transition-all duration-300 ease-out ${!collapsed && engineeringOpen ? "max-h-[200px] opacity-100" : "max-h-0 opacity-0"}`}>
             <TeamSubItem to="/team/engineering/database" icon={Database} label="Database" collapsed={collapsed} />
             <TeamSubItem to="/team/engineering/issues" icon={SquareCheckBig} label="Issues" collapsed={collapsed} />
-            <TeamSubItem to="/team/engineering/views" icon={PostmanIcon} label="Postman" collapsed={collapsed} />
           </div>
 
           {/* Platform */}
@@ -151,7 +142,6 @@ export default function Sidebar({ collapsed, onToggle }) {
           <div className={`flex flex-col items-start gap-[4px] overflow-hidden transition-all duration-300 ease-out ${!collapsed && platformOpen ? "max-h-[200px] opacity-100" : "max-h-0 opacity-0"}`}>
             <TeamSubItem to="/team/platform/database" icon={Database} label="Database" collapsed={collapsed} />
             <TeamSubItem to="/team/platform/api-client" icon={Diamond} label="API Client" collapsed={collapsed} />
-            <TeamSubItem to="/team/platform/views" icon={PostmanIcon} label="Postman" collapsed={collapsed} />
           </div>
         </div>
 
