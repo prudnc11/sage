@@ -33,7 +33,7 @@ const ROUTE_CONFIG = {
   "/team/platform/views": { icon: Layers, iconColor: "text-[#B39DDB]", breadcrumb: ["Side Quests", "Postman"] },
 };
 
-const HIDE_AI_CHAT = ["/roadmap", "/automations", "/team/platform/api-client", "/team/platform/views", "/team/engineering/views", "/team/engineering/database", "/team/platform/database"];
+const HIDE_AI_CHAT = ["/roadmap", "/automations", "/time-tracking", "/settings", "/team/platform/api-client", "/team/platform/views", "/team/engineering/views", "/team/engineering/database", "/team/platform/database"];
 
 function Layout() {
   const location = useLocation();
