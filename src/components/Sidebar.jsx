@@ -11,7 +11,7 @@ import {
   LayoutGrid,
   PanelLeft,
   Code2,
-  ArrowLeftRight,
+  Database,
   SquareCheckBig,
   Diamond,
   Zap,
@@ -131,7 +131,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             <ChevronRight size={13} className={`text-text-primary shrink-0 transition-all duration-300 ease-out ${collapsed ? "w-0 opacity-0" : `w-auto opacity-100 ${engineeringOpen ? "rotate-90" : ""}`}`} />
           </div>
           <div className={`flex flex-col items-start gap-[4px] overflow-hidden transition-all duration-300 ease-out ${!collapsed && engineeringOpen ? "max-h-[200px] opacity-100" : "max-h-0 opacity-0"}`}>
-            <TeamSubItem to="/team/engineering/triage" icon={ArrowLeftRight} label="Triage" collapsed={collapsed} />
+            <TeamSubItem to="/team/engineering/database" icon={Database} label="Database" collapsed={collapsed} />
             <TeamSubItem to="/team/engineering/issues" icon={SquareCheckBig} label="Issues" collapsed={collapsed} />
             <TeamSubItem to="/team/engineering/views" icon={PostmanIcon} label="Postman" collapsed={collapsed} />
           </div>
@@ -149,7 +149,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             <ChevronRight size={13} className={`text-text-primary shrink-0 transition-all duration-300 ease-out ${collapsed ? "w-0 opacity-0" : `w-auto opacity-100 ${platformOpen ? "rotate-90" : ""}`}`} />
           </div>
           <div className={`flex flex-col items-start gap-[4px] overflow-hidden transition-all duration-300 ease-out ${!collapsed && platformOpen ? "max-h-[200px] opacity-100" : "max-h-0 opacity-0"}`}>
-            <TeamSubItem to="/team/platform/triage" icon={ArrowLeftRight} label="Triage" collapsed={collapsed} />
+            <TeamSubItem to="/team/platform/database" icon={Database} label="Database" collapsed={collapsed} />
             <TeamSubItem to="/team/platform/api-client" icon={Diamond} label="API Client" collapsed={collapsed} />
             <TeamSubItem to="/team/platform/views" icon={PostmanIcon} label="Postman" collapsed={collapsed} />
           </div>

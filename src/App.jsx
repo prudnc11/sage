@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { Code2, Zap, Map, Clock, Settings, Shield, Terminal, Layers, Inbox, FileText, ArrowLeftRight } from "lucide-react";
+import { Code2, Zap, Map, Clock, Settings, Shield, Terminal, Layers, Inbox, FileText, Database as DatabaseIcon } from "lucide-react";
 import { ThemeProvider } from "./context/ThemeContext";
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
@@ -14,6 +14,7 @@ import ApiClient from "./pages/ApiClient";
 import PostmanViews from "./pages/PostmanViews";
 import InboxPage from "./pages/Inbox";
 import Notes from "./pages/Notes";
+import DatabasePage from "./pages/Database";
 
 const ROUTE_CONFIG = {
   "/": { icon: Code2, iconColor: "text-[#5e6ad2]", breadcrumb: ["Engineering", "All issues"] },
@@ -23,16 +24,16 @@ const ROUTE_CONFIG = {
   "/roadmap": { icon: Map, iconColor: "text-[#4caf50]", breadcrumb: ["Workspace", "Roadmap"] },
   "/time-tracking": { icon: Clock, iconColor: "text-[#5e6ad2]", breadcrumb: ["Workspace", "Time Tracking"] },
   "/settings": { icon: Settings, iconColor: "text-[#757575]", breadcrumb: ["Settings"] },
-  "/team/engineering/triage": { icon: ArrowLeftRight, iconColor: "text-[#88C695]", breadcrumb: ["Engineering", "Triage"] },
+  "/team/engineering/database": { icon: DatabaseIcon, iconColor: "text-[#88C695]", breadcrumb: ["Engineering", "Database"] },
   "/team/engineering/issues": { icon: Code2, iconColor: "text-[#88C695]", breadcrumb: ["Engineering", "Issues"] },
   "/team/engineering/views": { icon: Layers, iconColor: "text-[#88C695]", breadcrumb: ["Engineering", "Postman"] },
-  "/team/platform/triage": { icon: ArrowLeftRight, iconColor: "text-[#B39DDB]", breadcrumb: ["Side Quests", "Triage"] },
+  "/team/platform/database": { icon: DatabaseIcon, iconColor: "text-[#B39DDB]", breadcrumb: ["Side Quests", "Database"] },
   "/team/platform/issues": { icon: Shield, iconColor: "text-[#B39DDB]", breadcrumb: ["Side Quests", "Issues"] },
   "/team/platform/api-client": { icon: Terminal, iconColor: "text-[#B39DDB]", breadcrumb: ["Side Quests", "API Client"] },
   "/team/platform/views": { icon: Layers, iconColor: "text-[#B39DDB]", breadcrumb: ["Side Quests", "Postman"] },
 };
 
-const HIDE_AI_CHAT = ["/roadmap", "/team/platform/api-client", "/team/platform/views", "/team/engineering/views"];
+const HIDE_AI_CHAT = ["/roadmap", "/team/platform/api-client", "/team/platform/views", "/team/engineering/views", "/team/engineering/database", "/team/platform/database"];
 
 function Layout() {
   const location = useLocation();
@@ -55,10 +56,10 @@ function Layout() {
               <Route path="/roadmap" element={<Roadmap />} />
               <Route path="/time-tracking" element={<TimeTracking />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/team/engineering/triage" element={<Issues />} />
+              <Route path="/team/engineering/database" element={<DatabasePage />} />
               <Route path="/team/engineering/issues" element={<Issues />} />
               <Route path="/team/engineering/views" element={<PostmanViews />} />
-              <Route path="/team/platform/triage" element={<Issues />} />
+              <Route path="/team/platform/database" element={<DatabasePage />} />
               <Route path="/team/platform/issues" element={<Issues />} />
               <Route path="/team/platform/api-client" element={<ApiClient />} />
               <Route path="/team/platform/views" element={<PostmanViews />} />
